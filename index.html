@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GameHub – Meine Spiele</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+```
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --border: #1e1e2e;
+  --accent: #00ff88;
+  --accent2: #ff3c6e;
+  --text: #e8e8f0;
+  --muted: #555570;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glow blob */
+body::after {
+  content: '';
+  position: fixed;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,255,136,0.06) 0%, transparent 70%);
+  top: -100px; left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+header {
+  position: relative;
+  z-index: 1;
+  padding: 60px 40px 40px;
+  text-align: center;
+}
+
+.logo-tag {
+  display: inline-block;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 4px;
+  padding: 4px 14px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(64px, 12vw, 120px);
+  letter-spacing: 4px;
+  line-height: 0.95;
+  background: linear-gradient(135deg, #fff 40%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 16px;
+}
+
+/* Stats bar */
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 40px;
+  padding: 20px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.stat { text-align: center; }
+.stat-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: var(--accent);
+  line-height: 1;
+}
+.stat-label { font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+
+/* Filter bar */
+.filter-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 30px 20px;
+}
+
+.filter-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-btn:hover, .filter-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(0,255,136,0.15);
+}
+
+/* Grid */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 80px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2px;
+}
+
+/* Card */
+.game-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 32px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, transform 0.3s;
+  animation: fadeUp 0.5s ease both;
+}
+
+.game-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  z-index: 2;
+}
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,255,136,0.04) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.game-card:hover::before { opacity: 1; }
+
+/* Scan line effect */
+.game-card::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0; right: 0;
+  height: 40%;
+  background: linear-gradient(to bottom, transparent, rgba(0,255,136,0.05), transparent);
+  transition: top 0.6s ease;
+}
+.game-card:hover::after { top: 200%; }
+
+.card-tag {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tag {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border: 1px solid;
+}
+.tag-arcade { border-color: var(--accent); color: var(--accent); }
+.tag-puzzle { border-color: #7c6fff; color: #7c6fff; }
+.tag-action { border-color: var(--accent2); color: var(--accent2); }
+.tag-strategy { border-color: #ffcc00; color: #ffcc00; }
+
+.card-icon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.card-meta { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+.play-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.play-btn svg {
+  width: 14px; height: 14px;
+  fill: var(--accent);
+  transition: transform 0.2s;
+}
+.game-card:hover .play-btn svg { transform: translateX(4px); }
+
+/* NEW badge */
+.badge-new {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: var(--accent2);
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+/* Empty card (coming soon) */
+.game-card.coming-soon {
+  opacity: 0.35;
+  pointer-events: none;
+  border-style: dashed;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+footer {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 30px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 600px) {
+  header { padding: 40px 20px 30px; }
+  .stats { gap: 20px; }
+  main { padding: 0 0 60px; }
+}
+```
+
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-tag">Spielesammlung</div>
+  <h1>GAME<br>HUB</h1>
+  <p class="subtitle">Alle meine HTML-Spiele auf einen Blick</p>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num" id="game-count">3</div>
+      <div class="stat-label">Spiele</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">HTML5</div>
+      <div class="stat-label">Technologie</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">100%</div>
+      <div class="stat-label">Gratis</div>
+    </div>
+  </div>
+</header>
+
+<div class="filter-bar">
+  <button class="filter-btn active" onclick="filter('all', this)">Alle</button>
+  <button class="filter-btn" onclick="filter('arcade', this)">Arcade</button>
+  <button class="filter-btn" onclick="filter('puzzle', this)">Puzzle</button>
+  <button class="filter-btn" onclick="filter('action', this)">Action</button>
+  <button class="filter-btn" onclick="filter('strategy', this)">Strategy</button>
+</div>
+
+<main id="game-grid">
+
+  <!-- ============================================
+       SPIEL 1 – Beispiel: Snake
+       Passe "href", "card-icon", "card-title",
+       "card-desc" und das "tag-*" an dein Spiel an
+       ============================================ -->
+
+  <a href="games/snake/index.html" class="game-card" data-category="arcade">
+    <div class="badge-new">Neu</div>
+    <div class="card-tag">
+      <span class="tag tag-arcade">Arcade</span>
+    </div>
+    <div class="card-icon">🐍</div>
+    <div class="card-title">Snake</div>
+    <p class="card-desc">Klassisches Snake-Spiel. Iss so viele Äpfel wie möglich ohne gegen die Wand zu stoßen!</p>
+    <div class="card-footer">
+      <span class="card-meta">1 Spieler · Tastatur</span>
+      <span class="play-btn">
+        Spielen
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </span>
+    </div>
+  </a>
+
+  <!-- ============================================
+       SPIEL 2 – Beispiel: Breakout
+       ============================================ -->
+
+  <a href="games/breakout/index.html" class="game-card" data-category="action">
+    <div class="card-tag">
+      <span class="tag tag-action">Action</span>
+    </div>
+    <div class="card-icon">🧱</div>
+    <div class="card-title">Breakout</div>
+    <p class="card-desc">Zerstöre alle Blöcke mit deinem Ball. Lass den Ball nicht fallen!</p>
+    <div class="card-footer">
+      <span class="card-meta">1 Spieler · Maus</span>
+      <span class="play-btn">
+        Spielen
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </span>
+    </div>
+  </a>
+
+  <!-- ============================================
+       SPIEL 3 – Beispiel: 2048
+       ============================================ -->
+
+  <a href="games/2048/index.html" class="game-card" data-category="puzzle">
+    <div class="card-tag">
+      <span class="tag tag-puzzle">Puzzle</span>
+    </div>
+    <div class="card-icon">🔢</div>
+    <div class="card-title">2048</div>
+    <p class="card-desc">Schiebe die Kacheln und kombiniere gleiche Zahlen. Erreichst du 2048?</p>
+    <div class="card-footer">
+      <span class="card-meta">1 Spieler · Touch / Tastatur</span>
+      <span class="play-btn">
+        Spielen
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </span>
+    </div>
+  </a>
+
+  <!-- ============================================
+       PLATZHALTER – Kommt bald
+       (einfach duplizieren und anpassen)
+       ============================================ -->
+
+  <div class="game-card coming-soon" data-category="">
+    <div class="card-icon">🎮</div>
+    <div class="card-title">Demnächst</div>
+    <p class="card-desc">Neues Spiel in Entwicklung...</p>
+    <div class="card-footer">
+      <span class="card-meta">Coming Soon</span>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Selbst programmiert mit ❤️ · Powered by GitHub Pages
+</footer>
+
+<script>
+  function filter(category, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.game-card').forEach(card => {
+      const show = category === 'all' || card.dataset.category === category;
+      card.style.display = show ? 'flex' : 'none';
+    });
+  }
+</script>
+
+</body>
+</html>
