@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>NITRO RUSH</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+–neon: #00ffe7;
+–red: #ff2d55;
+–yellow: #ffd700;
+–purple: #bf5fff;
+–green: #39ff14;
+–bg: #07070f;
+–road-left: 80px;
+–road-right: 420px;
+}
+
+html, body {
+width: 100%; height: 100%;
+background: var(–bg);
+color: #fff;
+font-family: ‘Orbitron’, sans-serif;
+overflow: hidden;
+touch-action: none;
+user-select: none;
+-webkit-user-select: none;
+}
+
+/* ── LAYOUT ── */
+#app {
+width: 100vw;
+height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: flex-start;
+position: relative;
+}
+
+/* ── HUD ── */
+#hud {
+width: 100%;
+max-width: 520px;
+display: flex;
+justify-content: space-around;
+align-items: center;
+padding: 6px 10px;
+background: rgba(0,255,231,0.04);
+border-bottom: 1px solid rgba(0,255,231,0.18);
+flex-shrink: 0;
+position: relative;
+z-index: 5;
+}
+.hud-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.hud-label { font-family: ‘Share Tech Mono’, monospace; font-size: 8px; color: var(–neon); letter-spacing: 2px; opacity: 0.65; }
+.hud-value { font-size: 14px; font-weight: 700; line-height: 1; }
+
+/* ── CANVAS AREA ── */
+#canvasWrap {
+position: relative;
+flex: 1;
+width: 100%;
+max-width: 520px;
+overflow: hidden;
+display: flex;
+align-items: stretch;
+}
+
+#canvas {
+display: block;
+width: 100%;
+height: 100%;
+border-left: 1px solid rgba(0,255,231,0.2);
+border-right: 1px solid rgba(0,255,231,0.2);
+}
+
+/* ── POWERUP BAR ── */
+#puBar {
+width: 100%;
+max-width: 520px;
+display: flex;
+gap: 6px;
+padding: 5px 10px;
+background: rgba(0,255,231,0.04);
+border-top: 1px solid rgba(0,255,231,0.18);
+align-items: center;
+min-height: 36px;
+flex-shrink: 0;
+z-index: 5;
+}
+.pu-label { font-family: ‘Share Tech Mono’, monospace; font-size: 8px; color: rgba(255,255,255,0.35); letter-spacing: 1px; }
+.pu-icon { font-size: 18px; animation: glow-pulse 1s infinite alternate; }
+@keyframes glow-pulse { from { filter: brightness(0.8) } to { filter: brightness(1.4) drop-shadow(0 0 5px currentColor) } }
+
+/* ── TOUCH CONTROLS ── */
+#controls {
+width: 100%;
+max-width: 520px;
+display: none; /* shown only on touch */
+align-items: center;
+justify-content: space-between;
+padding: 8px 12px 10px;
+gap: 10px;
+flex-shrink: 0;
+background: rgba(0,0,0,0.5);
+z-index: 5;
+}
+
+.ctrl-group {
+display: flex;
+gap: 6px;
+align-items: center;
+}
+
+.ctrl-btn {
+width: 54px; height: 54px;
+border-radius: 12px;
+border: 2px solid rgba(255,255,255,0.2);
+background: rgba(255,255,255,0.07);
+display: flex; align-items: center; justify-content: center;
+font-size: 22px;
+cursor: pointer;
+transition: background 0.1s, transform 0.1s;
+backdrop-filter: blur(4px);
+-webkit-backdrop-filter: blur(4px);
+position: relative;
+overflow: hidden;
+}
+.ctrl-btn::after {
+content: ‘’;
+position: absolute; inset: 0;
+background: radial-gradient(circle at center, rgba(255,255,255,0.15), transparent);
+opacity: 0;
+transition: opacity 0.1s;
+}
+.ctrl-btn.active { background: rgba(0,255,231,0.18); border-color: var(–neon); transform: scale(0.93); }
+.ctrl-btn.active::after { opacity: 1; }
+
+.ctrl-btn.gas   { border-color: rgba(57,255,20,0.5); background: rgba(57,255,20,0.08); width: 62px; height: 62px; font-size: 26px; }
+.ctrl-btn.brake { border-color: rgba(255,45,85,0.5);  background: rgba(255,45,85,0.08);  width: 54px; height: 54px; }
+.ctrl-btn.gas.active   { background: rgba(57,255,20,0.3); }
+.ctrl-btn.brake.active { background: rgba(255,45,85,0.3); }
+
+/* ── OVERLAY ── */
+#overlay {
+position: absolute;
+inset: 0;
+display: flex; flex-direction: column;
+align-items: center; justify-content: center;
+background: rgba(4, 4, 12, 0.92);
+backdrop-filter: blur(6px);
+-webkit-backdrop-filter: blur(6px);
+z-index: 20;
+padding: 20px;
+gap: 0;
+}
+#overlay h1 {
+font-size: clamp(28px, 8vw, 46px);
+font-weight: 900;
+letter-spacing: 4px;
+color: var(–neon);
+text-shadow: 0 0 30px var(–neon), 0 0 60px rgba(0,255,231,0.3);
+line-height: 1;
+}
+#overlay .sub {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: clamp(9px, 2.5vw, 12px);
+color: rgba(255,255,255,0.4);
+letter-spacing: 4px;
+margin: 6px 0 20px;
+}
+#overlay .info {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: clamp(10px, 3vw, 12px);
+color: rgba(255,255,255,0.55);
+text-align: center;
+line-height: 2.2;
+margin-bottom: 24px;
+}
+#overlay .score-big {
+font-size: clamp(28px, 8vw, 48px);
+color: var(–yellow);
+text-shadow: 0 0 20px var(–yellow);
+font-weight: 900;
+margin: 6px 0 4px;
+}
+#overlay .hi-label {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 11px;
+color: rgba(255,200,0,0.5);
+letter-spacing: 3px;
+margin-bottom: 22px;
+}
+#overlay .pu-guide {
+display: flex;
+flex-wrap: wrap;
+gap: 8px;
+justify-content: center;
+margin-bottom: 22px;
+max-width: 360px;
+}
+.pu-pill {
+display: flex; align-items: center; gap: 5px;
+background: rgba(255,255,255,0.05);
+border: 1px solid rgba(255,255,255,0.12);
+border-radius: 20px;
+padding: 4px 10px;
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 10px;
+color: rgba(255,255,255,0.6);
+}
+
+.btn-start {
+font-family: ‘Orbitron’, sans-serif;
+font-size: clamp(12px, 3.5vw, 15px);
+font-weight: 700;
+letter-spacing: 3px;
+padding: 14px 44px;
+background: transparent;
+color: var(–neon);
+border: 2px solid var(–neon);
+cursor: pointer;
+transition: all 0.2s;
+text-transform: uppercase;
+-webkit-appearance: none;
+border-radius: 0;
+}
+.btn-start:hover, .btn-start:active { background: var(–neon); color: #000; box-shadow: 0 0 30px var(–neon); }
+
+/* ── LEVEL UP FLASH ── */
+#flashEl {
+position: absolute;
+inset: 0;
+pointer-events: none;
+z-index: 15;
+opacity: 0;
+background: radial-gradient(circle, rgba(0,255,231,0.3), transparent 70%);
+transition: opacity 0.3s;
+}
+#flashEl.show { opacity: 1; }
+
+/* ── COMBO DISPLAY ── */
+#combo {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+font-size: 32px;
+font-weight: 900;
+color: var(–yellow);
+text-shadow: 0 0 20px var(–yellow);
+opacity: 0;
+pointer-events: none;
+z-index: 10;
+transition: opacity 0.4s, transform 0.4s;
+white-space: nowrap;
+}
+#combo.show { opacity: 1; transform: translate(-50%, -70%) scale(1.2); }
+
+@media (pointer: coarse) {
+#controls { display: flex !important; }
+}
+</style>
+
+</head>
+<body>
+<div id="app">
+
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-label">SPEED</span>
+      <span class="hud-value" id="hSpeed">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">SCORE</span>
+      <span class="hud-value" id="hScore">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">LEBEN</span>
+      <span class="hud-value" id="hLives">❤❤❤</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">LEVEL</span>
+      <span class="hud-value" id="hLevel">1</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">ZIEL</span>
+      <span class="hud-value" id="hGoal">0/10</span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="canvas"></canvas>
+    <div id="flashEl"></div>
+    <div id="combo"></div>
+
+```
+<div id="overlay">
+  <h1>NITRO RUSH</h1>
+  <div class="sub">— ARCADE RACER —</div>
+  <div id="overlayContent">
+    <div class="info" id="overlayInfo">
+      🖥️ Tastatur: ← → Lenken &nbsp;·&nbsp; ↑↓ Gas/Bremse<br>
+      📱 Smartphone: Touch-Buttons unten<br><br>
+      Hindernisse ausweichen · Powerups sammeln!
+    </div>
+    <div class="pu-guide">
+      <div class="pu-pill">🛡️ Schild</div>
+      <div class="pu-pill">⚡ Nitro</div>
+      <div class="pu-pill">🧲 Magnet</div>
+      <div class="pu-pill">❄️ Slow-Mo</div>
+      <div class="pu-pill">⭐ +50 Pts</div>
+      <div class="pu-pill">❤️ +Leben</div>
+      <div class="pu-pill">💥 Bombe</div>
+      <div class="pu-pill">🔀 Chaos</div>
+    </div>
+  </div>
+  <button class="btn-start" id="startBtn">STARTEN</button>
+</div>
+```
+
+  </div>
+
+  <div id="puBar">
+    <span class="pu-label">AKTIV:</span>
+    <div id="activePU" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- TOUCH CONTROLS -->
+
+  <div id="controls">
+    <div class="ctrl-group">
+      <div class="ctrl-btn" id="btnLeft">◀</div>
+      <div class="ctrl-btn brake" id="btnBrake">⬇</div>
+    </div>
+    <div class="ctrl-btn gas" id="btnGas">🔥</div>
+    <div class="ctrl-group">
+      <div class="ctrl-btn brake" id="btnBrake2" style="display:none"></div>
+      <div class="ctrl-btn" id="btnRight">▶</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ───────────────────────────────────────────────
+// SETUP
+// ───────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+const overlay = document.getElementById('overlay');
+const flashEl = document.getElementById('flashEl');
+const comboEl = document.getElementById('combo');
+
+let W, H, ROAD_L, ROAD_R, LANE_W;
+
+function resizeCanvas() {
+  const rect = canvasWrap.getBoundingClientRect();
+  W = Math.round(rect.width);
+  H = Math.round(rect.height);
+  canvas.width = W;
+  canvas.height = H;
+  ROAD_L = Math.round(W * 0.16);
+  ROAD_R = Math.round(W * 0.84);
+  LANE_W = (ROAD_R - ROAD_L) / 3;
+  player.x = W / 2;
+  player.y = H * 0.82;
+}
+window.addEventListener('resize', () => { resizeCanvas(); });
+
+// ───────────────────────────────────────────────
+// INPUT (keyboard + touch)
+// ───────────────────────────────────────────────
+const keys = { left: false, right: false, up: false, down: false };
+
+document.addEventListener('keydown', e => {
+  if (['ArrowLeft','a','A'].includes(e.key)) keys.left = true;
+  if (['ArrowRight','d','D'].includes(e.key)) keys.right = true;
+  if (['ArrowUp','w','W'].includes(e.key)) keys.up = true;
+  if (['ArrowDown','s','S'].includes(e.key)) keys.down = true;
+  if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e => {
+  if (['ArrowLeft','a','A'].includes(e.key)) keys.left = false;
+  if (['ArrowRight','d','D'].includes(e.key)) keys.right = false;
+  if (['ArrowUp','w','W'].includes(e.key)) keys.up = false;
+  if (['ArrowDown','s','S'].includes(e.key)) keys.down = false;
+});
+
+function bindTouch(el, key) {
+  const activate = () => { keys[key] = true; el.classList.add('active'); };
+  const deactivate = () => { keys[key] = false; el.classList.remove('active'); };
+  el.addEventListener('touchstart', e => { e.preventDefault(); activate(); }, { passive: false });
+  el.addEventListener('touchend',   e => { e.preventDefault(); deactivate(); }, { passive: false });
+  el.addEventListener('touchcancel', e => { e.preventDefault(); deactivate(); }, { passive: false });
+  el.addEventListener('mousedown', activate);
+  el.addEventListener('mouseup', deactivate);
+  el.addEventListener('mouseleave', deactivate);
+}
+bindTouch(document.getElementById('btnLeft'),  'left');
+bindTouch(document.getElementById('btnRight'), 'right');
+bindTouch(document.getElementById('btnGas'),   'up');
+bindTouch(document.getElementById('btnBrake'), 'down');
+
+// ───────────────────────────────────────────────
+// GAME STATE
+// ───────────────────────────────────────────────
+let gameState = 'menu';
+let score = 0, lives = 3, level = 1, dodged = 0, levelGoal = 10;
+let frameCount = 0, hiscore = 0;
+let combo = 0, comboTimer = 0;
+
+const player = {
+  x: 250, y: 400, w: 0, h: 0,
+  speed: 0, vx: 0,
+  maxSpeed: 5, accel: 0.12, friction: 0.85,
+  invincible: 0, color: '#00ffe7'
+};
+
+let activePU = {}; // id → frames remaining
+let particles = [];
+let obstacles = [];
+let powerups = [];
+let bgObjs = [];
+let roadStripes = [];
+let comboShowTimer = 0;
+
+// ───────────────────────────────────────────────
+// POWERUP DEFINITIONS
+// ───────────────────────────────────────────────
+const PU_DEFS = [
+  { id: 'shield', emoji: '🛡️', color: '#00ffe7', label: 'SHIELD',  duration: 300 },
+  { id: 'nitro',  emoji: '⚡',  color: '#ffd700', label: 'NITRO',   duration: 220 },
+  { id: 'magnet', emoji: '🧲',  color: '#bf5fff', label: 'MAGNET',  duration: 260 },
+  { id: 'slow',   emoji: '❄️',  color: '#aae6ff', label: 'SLOW-MO', duration: 200 },
+  { id: 'star',   emoji: '⭐',  color: '#ff8800', label: '+50 PTS', duration: 0   },
+  { id: 'life',   emoji: '❤️',  color: '#ff2d55', label: '+LEBEN',  duration: 0   },
+  { id: 'bomb',   emoji: '💥',  color: '#ff6600', label: 'BOMBE',   duration: 0   },
+  { id: 'chaos',  emoji: '🔀',  color: '#ff00ff', label: 'CHAOS',   duration: 0   },
+];
+
+// ───────────────────────────────────────────────
+// OBSTACLE TYPES
+// ───────────────────────────────────────────────
+const OBS_TYPES = [
+  { emoji: '🚗', wRatio: 0.075, hRatio: 0.10 },
+  { emoji: '🚕', wRatio: 0.075, hRatio: 0.10 },
+  { emoji: '🚙', wRatio: 0.085, hRatio: 0.095 },
+  { emoji: '🚌', wRatio: 0.09,  hRatio: 0.13 },
+  { emoji: '🛻', wRatio: 0.085, hRatio: 0.11 },
+  { emoji: '🚎', wRatio: 0.09,  hRatio: 0.13 },
+  { emoji: '🚑', wRatio: 0.08,  hRatio: 0.10 },
+  { emoji: '🚓', wRatio: 0.075, hRatio: 0.10 },
+];
+
+// ───────────────────────────────────────────────
+// INIT / RESET
+// ───────────────────────────────────────────────
+function initGame() {
+  score = 0; lives = 3; level = 1; dodged = 0; combo = 0; comboTimer = 0;
+  frameCount = 0;
+  player.speed = 0; player.vx = 0; player.invincible = 0;
+  activePU = {}; particles = []; obstacles = []; powerups = [];
+  configLevel();
+  initBG();
+  initStripes();
+  renderActivePU();
+  updateHUD();
+}
+
+function configLevel() {
+  levelGoal = 8 + level * 4;
+  dodged = 0;
+  player.maxSpeed = 4.5 + level * 0.55;
+  obstacles = [];
+  powerups = [];
+  activePU = {};
+  renderActivePU();
+  updateHUD();
+}
+
+function initBG() {
+  bgObjs = [];
+  for (let i = 0; i < 10; i++) {
+    bgObjs.push(makeBGObj());
+    bgObjs[i].y = Math.random() * H;
+  }
+}
+function makeBGObj() {
+  const side = Math.random() < 0.5 ? 'left' : 'right';
+  return {
+    side,
+    x: side === 'left' ? Math.random() * ROAD_L * 0.9 : ROAD_R + Math.random() * (W - ROAD_R) * 0.9,
+    y: -200 - Math.random() * H,
+    w: 14 + Math.random() * 30,
+    h: 50 + Math.random() * 110,
+    hue: 200 + Math.random() * 80,
+    speed: 0.6 + Math.random() * 1.2
+  };
+}
+function initStripes() {
+  roadStripes = [];
+  for (let i = 0; i < 14; i++) roadStripes.push(i * (H / 7));
+}
+
+// ───────────────────────────────────────────────
+// SPAWN
+// ───────────────────────────────────────────────
+function spawnObstacle() {
+  const t = OBS_TYPES[Math.floor(Math.random() * OBS_TYPES.length)];
+  const lane = Math.floor(Math.random() * 3);
+  const x = ROAD_L + lane * LANE_W + LANE_W / 2;
+  obstacles.push({
+    x, y: -H * 0.15,
+    w: W * t.wRatio, h: H * t.hRatio,
+    emoji: t.emoji,
+    speed: (2.5 + level * 0.5 + Math.random() * 1.5) * (H / 550)
+  });
+}
+
+function spawnPowerup() {
+  const def = PU_DEFS[Math.floor(Math.random() * PU_DEFS.length)];
+  const x = ROAD_L + 20 + Math.random() * (ROAD_R - ROAD_L - 40);
+  powerups.push({ x, y: -H * 0.07, def, speed: (2 + Math.random()) * (H / 550) });
+}
+
+// ───────────────────────────────────────────────
+// POWERUP APPLY / TICK
+// ───────────────────────────────────────────────
+function applyPU(def) {
+  if (def.duration > 0) {
+    activePU[def.id] = def.duration;
+    if (def.id === 'nitro')  player.maxSpeed = 11;
+    if (def.id === 'shield') player.invincible = 99999;
+  }
+  if (def.id === 'star')  { score += 50; spawnBurst(player.x, player.y, '#ffd700', 18); showCombo('+50!'); }
+  if (def.id === 'life')  { lives = Math.min(5, lives + 1); spawnBurst(player.x, player.y, '#ff2d55', 12); showCombo('+❤'); }
+  if (def.id === 'bomb')  { clearObstacles(); spawnBurst(W/2, H/2, '#ff6600', 30); showCombo('BOOM!'); }
+  if (def.id === 'chaos') { chaosMode(); showCombo('CHAOS!'); }
+  renderActivePU();
+  updateHUD();
+}
+
+function clearObstacles() {
+  obstacles.forEach(o => spawnBurst(o.x, o.y, '#ff6600', 8));
+  obstacles = [];
+  score += 20;
+}
+
+function chaosMode() {
+  // Randomize all obstacle positions
+  obstacles.forEach(o => {
+    o.x = ROAD_L + Math.random() * (ROAD_R - ROAD_L);
+    o.y = -Math.random() * H * 0.5;
+    o.emoji = OBS_TYPES[Math.floor(Math.random() * OBS_TYPES.length)].emoji;
+  });
+  score += 30;
+}
+
+function tickPU() {
+  for (const id in activePU) {
+    activePU[id]--;
+    if (activePU[id] <= 0) {
+      delete activePU[id];
+      if (id === 'nitro')  player.maxSpeed = 4.5 + level * 0.55;
+      if (id === 'shield') player.invincible = 0;
+    }
+  }
+  renderActivePU();
+}
+
+function renderActivePU() {
+  const el = document.getElementById('activePU');
+  el.innerHTML = '';
+  for (const id in activePU) {
+    const def = PU_DEFS.find(d => d.id === id);
+    const s = document.createElement('span');
+    s.className = 'pu-icon';
+    s.title = def.label;
+    s.textContent = def.emoji;
+    s.style.color = def.color;
+    el.appendChild(s);
+  }
+}
+
+// ───────────────────────────────────────────────
+// PARTICLES
+// ───────────────────────────────────────────────
+function spawnBurst(x, y, color, count = 10) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+    const spd = 1.5 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - 1,
+      life: 1, decay: 0.018 + Math.random() * 0.02,
+      r: 2 + Math.random() * 5, color
+    });
+  }
+}
+
+// ───────────────────────────────────────────────
+// COMBO TEXT
+// ───────────────────────────────────────────────
+function showCombo(text) {
+  comboEl.textContent = text;
+  comboEl.classList.add('show');
+  clearTimeout(window._comboTO);
+  window._comboTO = setTimeout(() => comboEl.classList.remove('show'), 900);
+}
+
+// ───────────────────────────────────────────────
+// HUD
+// ───────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('hSpeed').textContent = Math.round(Math.abs(player.speed) * 22);
+  document.getElementById('hScore').textContent = score;
+  document.getElementById('hLives').textContent = '❤'.repeat(Math.max(0, lives));
+  document.getElementById('hLevel').textContent = level;
+  document.getElementById('hGoal').textContent  = dodged + '/' + levelGoal;
+}
+
+// ───────────────────────────────────────────────
+// COLLISION
+// ───────────────────────────────────────────────
+function overlaps(ax, ay, aw, ah, bx, by, bw, bh) {
+  return Math.abs(ax - bx) < (aw + bw) / 2 && Math.abs(ay - by) < (ah + bh) / 2;
+}
+
+// ───────────────────────────────────────────────
+// UPDATE
+// ───────────────────────────────────────────────
+function update() {
+  frameCount++;
+  const slow = activePU['slow'] ? 0.38 : 1;
+  const scale = H / 550;
+
+  // Road scroll
+  const scroll = (2 + player.speed) * slow;
+  roadStripes = roadStripes.map(s => (s + scroll * 1.5) % H);
+
+  // BG
+  bgObjs.forEach(b => {
+    b.y += b.speed * slow * scale;
+    if (b.y > H + 200) {
+      const nb = makeBGObj();
+      b.y = nb.y; b.w = nb.w; b.h = nb.h; b.hue = nb.hue; b.speed = nb.speed;
+    }
+  });
+
+  // Player input
+  if (keys.left)  player.vx -= 0.42;
+  if (keys.right) player.vx += 0.42;
+  if (keys.up)    player.speed = Math.min(player.maxSpeed, player.speed + player.accel);
+  else            player.speed = Math.min(player.maxSpeed, player.speed + 0.018); // auto-accel
+  if (keys.down)  player.speed = Math.max(0, player.speed - 0.25);
+
+  player.vx *= player.friction;
+  player.x  += player.vx * (activePU['slow'] ? 0.5 : 1);
+  player.x   = Math.max(ROAD_L + player.w / 2, Math.min(ROAD_R - player.w / 2, player.x));
+
+  if (player.invincible > 0 && !activePU['shield']) player.invincible--;
+
+  // Magnet
+  if (activePU['magnet']) {
+    powerups.forEach(p => {
+      const dx = player.x - p.x, dy = player.y - p.y;
+      const d = Math.sqrt(dx*dx + dy*dy) || 1;
+      if (d < W * 0.45) { p.x += dx / d * 5; p.y += dy / d * 5; }
+    });
+  }
+
+  // Spawn
+  const spawnRate = Math.max(35, 120 - level * 8 - Math.floor(dodged / 4));
+  if (frameCount % spawnRate === 0) spawnObstacle();
+  if (frameCount % Math.max(80, 160 - level * 6) === 0) spawnPowerup();
+
+  // Obstacles
+  obstacles.forEach(o => o.y += o.speed * slow);
+  obstacles = obstacles.filter(o => {
+    if (o.y > H + 100) {
+      dodged++;
+      score += 10 + (combo > 3 ? combo * 2 : 0);
+      combo++;
+      comboTimer = 120;
+      if (combo >= 5 && combo % 5 === 0) showCombo('COMBO x' + combo + '!');
+      updateHUD();
+      return false;
+    }
+    if (!o.hit && overlaps(player.x, player.y, player.w * 0.72, player.h * 0.72, o.x, o.y, o.w * 0.72, o.h * 0.72)) {
+      if (activePU['shield']) {
+        delete activePU['shield'];
+        player.invincible = 0;
+        spawnBurst(o.x, o.y, '#00ffe7', 22);
+        renderActivePU();
+        o.hit = true;
+        return false;
+      } else if (player.invincible <= 0) {
+        lives--;
+        player.invincible = 130;
+        combo = 0;
+        spawnBurst(player.x, player.y, '#ff2d55', 22);
+        updateHUD();
+        o.hit = true;
+        if (lives <= 0) { gameState = 'gameover'; showOverlay('gameover'); }
+        return false;
+      }
+    }
+    return !o.hit;
+  });
+
+  // Combo decay
+  if (comboTimer > 0) comboTimer--;
+  else combo = 0;
+
+  // Powerups
+  powerups.forEach(p => p.y += p.speed * slow);
+  powerups = powerups.filter(p => {
+    if (p.y > H + 60) return false;
+    if (overlaps(player.x, player.y, player.w, player.h, p.x, p.y, W * 0.07, W * 0.07)) {
+      applyPU(p.def);
+      spawnBurst(p.x, p.y, p.def.color, 14);
+      return false;
+    }
+    return true;
+  });
+
+  // Particles
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.06; p.life -= p.decay; });
+  particles = particles.filter(p => p.life > 0);
+
+  // Score tick
+  if (frameCount % 25 === 0) { score++; updateHUD(); }
+
+  // PU tick
+  tickPU();
+
+  // Level up
+  if (dodged >= levelGoal) {
+    level++;
+    hiscore = Math.max(hiscore, score);
+    flashEl.classList.add('show');
+    setTimeout(() => flashEl.classList.remove('show'), 400);
+    setTimeout(() => { gameState = 'levelup'; showOverlay('levelup'); }, 500);
+  }
+}
+
+// ───────────────────────────────────────────────
+// DRAW
+// ───────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // BG / grass
+  ctx.fillStyle = '#0b1a0b';
+  ctx.fillRect(0, 0, W, H);
+
+  // BG buildings
+  bgObjs.forEach(b => {
+    ctx.fillStyle = `hsl(${b.hue}, 35%, 9%)`;
+    ctx.fillRect(b.x - b.w/2, b.y, b.w, b.h);
+    ctx.fillStyle = 'rgba(255,220,80,0.25)';
+    for (let r = 4; r < b.h - 4; r += 14) {
+      for (let c = 3; c < b.w - 3; c += 10) {
+        if ((r + c + b.hue) % 3 !== 0) ctx.fillRect(b.x - b.w/2 + c, b.y + r, 6, 8);
+      }
+    }
+  });
+
+  // Road
+  ctx.fillStyle = '#191928';
+  ctx.fillRect(ROAD_L, 0, ROAD_R - ROAD_L, H);
+
+  // Road edge glow
+  ['#ff2d55', '#ff2d55'].forEach((col, i) => {
+    const lx = i === 0 ? ROAD_L : ROAD_R;
+    const grd = ctx.createLinearGradient(lx - 8, 0, lx + 8, 0);
+    grd.addColorStop(0, 'transparent');
+    grd.addColorStop(0.5, col);
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.fillRect(lx - 3, 0, 6, H);
+  });
+
+  // Lane dashes
+  ctx.save();
+  ctx.setLineDash([H * 0.055, H * 0.04]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 2;
+  for (let i = 1; i < 3; i++) {
+    const lx = ROAD_L + i * LANE_W;
+    ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, H); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Moving center stripe
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([H * 0.055, H * 0.04]);
+  roadStripes.forEach(s => {
+    ctx.shadowColor = 'white'; ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.moveTo(W/2 - 28, s % H); ctx.lineTo(W/2 + 28, s % H); ctx.stroke();
+  });
+  ctx.restore();
+
+  // Obstacles
+  const obsSize = Math.max(24, Math.min(42, W * 0.08));
+  obstacles.forEach(o => drawEmoji(o.emoji, o.x, o.y, obsSize));
+
+  // Powerups (float)
+  const puSize = Math.max(20, W * 0.065);
+  powerups.forEach(p => {
+    const bounce = Math.sin(frameCount * 0.1 + p.x) * 5;
+    ctx.shadowColor = p.def.color; ctx.shadowBlur = 14;
+    drawEmoji(p.def.emoji, p.x, p.y + bounce, puSize);
+    ctx.shadowBlur = 0;
+  });
+
+  // Player
+  drawPlayer();
+
+  // Particles
+  particles.forEach(p => {
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 5;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+  // Speed lines when fast
+  if (player.speed > 7) {
+    const a = (player.speed - 7) / 6;
+    ctx.globalAlpha = a * 0.5;
+    ctx.strokeStyle = '#00ffe7';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const lx = ROAD_L + Math.random() * (ROAD_R - ROAD_L);
+      const ly = Math.random() * H;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly + 25 + Math.random() * 35); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Slow-mo overlay
+  if (activePU['slow']) {
+    ctx.fillStyle = 'rgba(100,200,255,0.04)';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawPlayer() {
+  const { x, y, w, h, invincible } = player;
+  if (!activePU['shield'] && invincible > 0 && Math.floor(frameCount / 4) % 2 === 1) return;
+
+  // Car body
+  const g = ctx.createLinearGradient(x - w/2, y - h/2, x + w/2, y + h/2);
+  g.addColorStop(0, '#003d47');
+  g.addColorStop(0.45, '#00c8b0');
+  g.addColorStop(1, '#003d47');
+  ctx.fillStyle = g;
+  ctx.shadowColor = '#00ffe7'; ctx.shadowBlur = 12;
+  ctx.beginPath();
+  const r = 6;
+  ctx.moveTo(x - w/2 + r, y - h/2);
+  ctx.lineTo(x + w/2 - r, y - h/2); ctx.arcTo(x + w/2, y - h/2, x + w/2, y - h/2 + r, r);
+  ctx.lineTo(x + w/2, y + h/2 - r); ctx.arcTo(x + w/2, y + h/2, x + w/2 - r, y + h/2, r);
+  ctx.lineTo(x - w/2 + r, y + h/2); ctx.arcTo(x - w/2, y + h/2, x - w/2, y + h/2 - r, r);
+  ctx.lineTo(x - w/2, y - h/2 + r); ctx.arcTo(x - w/2, y - h/2, x - w/2 + r, y - h/2, r);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Windscreen
+  ctx.fillStyle = 'rgba(120, 210, 255, 0.35)';
+  ctx.fillRect(x - w/2 + w * 0.15, y - h/2 + h * 0.12, w * 0.7, h * 0.26);
+
+  // Headlights
+  ctx.fillStyle = '#fffbe0';
+  ctx.shadowColor = '#fffbe0'; ctx.shadowBlur = 10;
+  ctx.fillRect(x - w/2 + 2, y - h/2 + 2, w * 0.22, h * 0.07);
+  ctx.fillRect(x + w/2 - w * 0.22 - 2, y - h/2 + 2, w * 0.22, h * 0.07);
+  ctx.shadowBlur = 0;
+
+  // Shield ring
+  if (activePU['shield']) {
+    const hue = (frameCount * 3) % 360;
+    ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.ellipse(x, y, w/2 + 10, h/2 + 10, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Nitro flames
+  if (activePU['nitro']) {
+    for (let i = 0; i < 3; i++) {
+      const fx = x + (i - 1) * w * 0.32;
+      const fl = h * 0.35 + Math.random() * h * 0.2;
+      const fg = ctx.createLinearGradient(fx, y + h/2, fx, y + h/2 + fl);
+      fg.addColorStop(0, '#ffd700'); fg.addColorStop(1, 'transparent');
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, y + h/2); ctx.lineTo(fx + 4, y + h/2); ctx.lineTo(fx, y + h/2 + fl);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  // Wheels
+  ctx.fillStyle = '#111';
+  const wheels = [
+    [x - w/2 - 3, y - h * 0.26], [x + w/2 - 3, y - h * 0.26],
+    [x - w/2 - 3, y + h * 0.14], [x + w/2 - 3, y + h * 0.14]
+  ];
+  wheels.forEach(([wx, wy]) => ctx.fillRect(wx, wy, 6, h * 0.18));
+}
+
+function drawEmoji(emoji, x, y, size) {
+  ctx.font = size + 'px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, x, y);
+}
+
+// ───────────────────────────────────────────────
+// OVERLAY
+// ───────────────────────────────────────────────
+function showOverlay(type) {
+  overlay.style.display = 'flex';
+  const oc = document.getElementById('overlayContent');
+
+  if (type === 'levelup') {
+    overlay.querySelector('h1').textContent = 'LEVEL UP!';
+    overlay.querySelector('h1').style.color = 'var(--yellow)';
+    overlay.querySelector('h1').style.textShadow = '0 0 30px var(--yellow)';
+    overlay.querySelector('.sub').textContent = `— LEVEL ${level} —`;
+    oc.innerHTML = `<div class="info">Score: <b style="color:var(--yellow)">${score}</b><br>Hindernisse ausgewichen: <b>${dodged}</b><br><br>Weiter — mehr Speed, neue Herausforderungen!</div>`;
+    document.getElementById('startBtn').textContent = 'WEITER';
+    document.getElementById('startBtn').onclick = () => {
+      overlay.style.display = 'none';
+      gameState = 'playing';
+      configLevel();
+    };
+  } else if (type === 'gameover') {
+    hiscore = Math.max(hiscore, score);
+    overlay.querySelector('h1').textContent = 'GAME OVER';
+    overlay.querySelector('h1').style.color = 'var(--red)';
+    overlay.querySelector('h1').style.textShadow = '0 0 30px var(--red)';
+    overlay.querySelector('.sub').textContent = `— LEVEL ${level} —`;
+    oc.innerHTML = `
+      <div class="score-big">${score}</div>
+      <div class="hi-label">HIGHSCORE: ${hiscore}</div>
+    `;
+    document.getElementById('startBtn').textContent = 'NOCHMAL';
+    document.getElementById('startBtn').onclick = () => {
+      overlay.style.display = 'none';
+      initGame();
+      gameState = 'playing';
+    };
+  }
+}
+
+// ───────────────────────────────────────────────
+// MAIN LOOP
+// ───────────────────────────────────────────────
+let lastTime = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  // Cap to 60fps logic
+  if (gameState === 'playing') update();
+  draw();
+}
+
+// Player size responsive
+function updatePlayerSize() {
+  player.w = Math.round(W * 0.073);
+  player.h = Math.round(H * 0.093);
+}
+
+// INIT
+document.getElementById('startBtn').addEventListener('click', () => {
+  overlay.style.display = 'none';
+  initGame();
+  gameState = 'playing';
+});
+
+resizeCanvas();
+updatePlayerSize();
+window.addEventListener('resize', () => {
+  setTimeout(() => { resizeCanvas(); updatePlayerSize(); initBG(); initStripes(); }, 100);
+});
+
+requestAnimationFrame(loop);
+
+// Detect touch device and show controls
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  document.getElementById('controls').style.display = 'flex';
+}
+</script>
+
+</body>
+</html>
